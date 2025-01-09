@@ -1,0 +1,17 @@
+name: synkronized-test
+template: single-container
+config:
+  name: "mc-status-rs"
+  size: medium
+  image:
+    repository: "ghcr.io/vaughnw128/mc-status-rs"
+    tag: "sha-b7bb738"
+
+  vaultSecrets:
+    - name: "DISCORD_TOKEN"
+      path: "mc-status-rs/discord-token"
+  env:
+    - name: "MAPS_ADDRESS"
+      value: "https://maps.vaughn.sh"
+    - name: "MC_SERVER_IP"
+      value: "mc.vaughn.sh"

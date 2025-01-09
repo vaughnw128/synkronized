@@ -1,146 +1,141 @@
-mod argo;
+pub mod argo;
 
+use std::collections::HashMap;
+use std::fs::rename;
 use k8s_openapi::api::core::v1::Pod;
 use dotenv::dotenv;
-use kube::config::KubeConfigOptions;
 use anyhow::{bail, Context, Result};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use derivative::Derivative;
 use futures::{StreamExt, TryStreamExt};
-use k8s_openapi::{apimachinery::pkg::apis::meta::v1::Time, chrono::Utc};
-use apiexts::CustomResourceDefinition;
-use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1 as apiexts;
-use kube::{
-    api::{Api, DynamicObject, ListParams, Patch, PatchParams, ResourceExt},
-    core::GroupVersionKind,
-    discovery::{ApiCapabilities, ApiResource, Discovery, Scope},
-    runtime::{
-        wait::{await_condition, conditions, conditions::is_deleted},
-        watcher, WatchStreamExt,
-    },
-    CustomResource,
-    CustomResourceExt,
-    Client,
-    Config
-};
+use chrono::DateTime;
+use http::HeaderMap;
+use poem::{listener::TcpListener, Route, Server};
+use poem_openapi::{payload::PlainText, ApiResponse, OpenApi, OpenApiService};
+use poem_openapi::payload::Json;
 
-const ARGO_NAMESPACE: &str = "argocd";
-const ARGO_PROJECT: &str = "default";
-const LOCAL_CLUSTER: &str = "https://kubernetes.default.svc";
 const CHART_REPO: &str = "https://charts.vaughn.sh";
 
-#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct Source {
-    #[serde(rename="repoURL")]
-    repo_url: String,
-    path: String,
-    target_revision: String
-}
-
-#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, Default)]
-pub struct Destination {
-    server: String,
-    namespace: String,
-}
-
-#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, Default)]
-pub struct SyncPolicy {
-    automated: Automated
-}
-
-#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, Derivative)]
-#[serde(rename_all = "camelCase")]
-#[derivative(Default)]
-pub struct Automated {
-    #[derivative(Default(value="false"))]
-    prune: bool,
-    #[derivative(Default(value="false"))]
-    self_heal: bool,
-    #[derivative(Default(value="false"))]
-    allow_empty: bool
-}
-
-#[derive(CustomResource, Deserialize, Serialize, Clone, Debug, JsonSchema, Default)]
-#[kube(group = "argoproj.io", version = "v1alpha1", kind = "Application", namespaced)]
-#[serde(rename_all = "camelCase")]
-pub struct ArgoSpec {
-    project: String,
-    source: Source,
-    destination: Destination,
-    sync_policy: SyncPolicy
-}
-
-pub struct Project {
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Template {
     name: String,
-    repo: String
+    version: String,
 }
 
-async fn get_chart(chart_name: String) -> Result<()> {
-    let body = reqwest::get(CHART_REPO)
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SynkronizedProject {
+    name: String,
+    template: String,
+    config: serde_yaml::Value
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Charts {
+    apiVersion: String,
+    entries: HashMap<String, Vec<ChartVersion>>,
+    generated: String
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ChartVersion {
+    apiVersion: String,
+    appVersion: String,
+    created: String,
+    description: String,
+    digest: String,
+    name: String,
+    #[serde(rename="type")]
+    chart_type: String,
+    urls: Vec<String>,
+    version: String
+}
+
+async fn get_chart_template(chart_name: &str) -> Result<Template> {
+    let chart_repo_yaml = format!("{CHART_REPO}/index.yaml");
+
+    let body = reqwest::get(chart_repo_yaml)
     .await?
     .text()
     .await?;
 
-    println!("{:?}", body);
-
-    Ok(())
+    let charts: Charts = serde_yaml::from_str(&body).expect("Unable to parse charts.");
+    match charts.entries.get(chart_name) {
+        Some(charts) => Ok(Template{
+            name: charts[0].name.clone(),
+            version: charts[0].version.clone()
+        }),
+        None => panic!("No viable charts were found for {}", chart_name)
+    }
 }
 
-
-async fn apply(client: Client, yaml: serde_yaml::Value) -> Result<()> {
-    let ssapply = PatchParams::apply("kubectl-light").force();
-    let obj: DynamicObject = serde_yaml::from_value(yaml)?;
-    let gvk = if let Some(tm) = &obj.types {
-        GroupVersionKind::try_from(tm)?
-    } else {
-        bail!("cannot apply object without valid TypeMeta {:?}", obj);
-    };
-    let name = obj.name_any();
-    let api: Api<Application> = Api::namespaced(client.clone(), ARGO_NAMESPACE);
-    println!("Applying {}: \n{}", gvk.kind, serde_yaml::to_string(&obj)?);
-    let data: serde_json::Value = serde_json::to_value(&obj)?;
-    let _r = api.patch(&name, &ssapply, &Patch::Apply(data)).await?;
-    println!("applied {} {}", gvk.kind, name);
-
-    Ok(())
+async fn read_synkronized_file(fp: &str) -> Result<SynkronizedProject> {
+    let f = std::fs::File::open(fp)?;
+    let synkronized_yaml: SynkronizedProject = serde_yaml::from_reader(f)?;
+    Ok(synkronized_yaml)
 }
 
-fn create_application(project: Project) -> Application {
+// #[tokio::main]
+// async fn main() -> Result<()>{
+//     dotenv().ok();
+//
+//     let mut kube_config = Config::from_kubeconfig(&KubeConfigOptions::default()).await?;
+//     kube_config.accept_invalid_certs = true;
+//     let client = Client::try_from(kube_config).expect("Could not configure the client.");
+//
+//     let synkronized_yaml = read_synkronized_file("synkronized.yaml").await?;
+//     let chart_template = get_chart_template(&synkronized_yaml.template).await?;
+//
+//     // println!("{:?}", chart);
+//     // println!("{:?}", synkronized_yaml);
+//
+//     let application = argo::Application::create(synkronized_yaml, chart_template);
+//     application.apply(client).await
+// }
 
-    let argo_spec = ArgoSpec {
-        project: ARGO_PROJECT.to_string(),
-        source: Source {
-                repo_url: project.repo,
-                path: project.name.clone(),
-                target_revision: "HEAD".to_string(),
-            },
-        destination: Destination {
-            server: LOCAL_CLUSTER.to_string(),
-            namespace: project.name.clone(),
-        },
-        ..Default::default()
-    };
+struct Api;
 
-    Application::new(&project.name, argo_spec)
+#[derive(ApiResponse)]
+enum PackageUpdateResponse {
+    #[oai(status = 200)]
+    Ok,
+    #[oai(status = 500)]
+    Error,
+}
+
+#[derive(ApiResponse)]
+enum HealthCheckResponse {
+    #[oai(status = 200)]
+    Ok,
+}
+
+#[OpenApi]
+impl Api {
+    #[oai(path = "/synkronized", method = "post")]
+    async fn synkronized(&self, package: Json<serde_json::Value>, headers: &HeaderMap) -> PackageUpdateResponse {
+        println!("{:?}", package);
+        println!("{:?}", serde_json::to_string(&package.0).unwrap());
+        if headers.get("X-GitHub-Event").unwrap() == "ping" {
+            return PackageUpdateResponse::Ok
+        }
+        PackageUpdateResponse::Ok
+    }
+    #[oai(path = "/ping", method = "post")]
+    async fn health_check(&self) -> HealthCheckResponse {
+        HealthCheckResponse::Ok
+    }
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>>{
-    dotenv().ok();
+async fn main() -> Result<(), std::io::Error> {
+    tracing_subscriber::fmt::init();
 
-    let mut kube_config = Config::from_kubeconfig(&KubeConfigOptions::default()).await?;
-    kube_config.accept_invalid_certs = true;
-    let client = Client::try_from(kube_config).expect("Could not configure the client.");
+    let api_service =
+        OpenApiService::new(Api, "Hello World", "1.0").server("http://localhost:8080");
+    let ui = api_service.swagger_ui();
+    let app = Route::new().nest("/", api_service).nest("/docs", ui);
 
-    let mcstatus = Project {
-        name: "mc-status-rs".to_string(),
-        repo: "git@github.com:vaughnw128/k8s-infra.git".to_string(),
-    };
-
-    let application = create_application(mcstatus);
-    apply(client, serde_yaml::to_value(&application)?).await?;
-
-    Ok(())
+    Server::new(TcpListener::bind("0.0.0.0:8080"))
+        .run(app)
+        .await
 }
