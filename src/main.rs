@@ -1,4 +1,5 @@
 pub mod argo;
+pub mod github;
 
 use std::collections::HashMap;
 use std::fs::rename;
@@ -10,10 +11,13 @@ use serde::{Deserialize, Serialize};
 use derivative::Derivative;
 use futures::{StreamExt, TryStreamExt};
 use chrono::DateTime;
-use http::HeaderMap;
-use poem::{listener::TcpListener, Route, Server};
-use poem_openapi::{payload::PlainText, ApiResponse, OpenApi, OpenApiService};
-use poem_openapi::payload::Json;
+use axum::{
+    routing::{get, post},
+    http::StatusCode,
+    Json, Router,
+    http::header::HeaderMap
+};
+use axum::extract::rejection::JsonRejection;
 
 const CHART_REPO: &str = "https://charts.vaughn.sh";
 
@@ -93,49 +97,55 @@ async fn read_synkronized_file(fp: &str) -> Result<SynkronizedProject> {
 //     application.apply(client).await
 // }
 
-struct Api;
-
-#[derive(ApiResponse)]
-enum PackageUpdateResponse {
-    #[oai(status = 200)]
-    Ok,
-    #[oai(status = 500)]
-    Error,
+fn registry_published (package_published: github::RegistryPublished) {
+    package_published.registry_package.package_version.package_url;
 }
 
-#[derive(ApiResponse)]
-enum HealthCheckResponse {
-    #[oai(status = 200)]
-    Ok,
+async fn github_hooks(headers: HeaderMap, payload: Result<Json<github::WebhookPayload>, JsonRejection>) -> Result<StatusCode, (StatusCode, String)> {
+    // println!("{:?}", serde_json::to_string(&package.0).unwrap());
+    // let event_type = headers.get("X-GitHub-Event").unwrap();
+
+    if headers.get("X-GitHub-Event").unwrap().to_str().unwrap() == "ping" {
+        return Ok(StatusCode::OK)
+    };
+
+    let payload = match payload {
+        Ok(payload) => payload,
+        Err(JsonRejection::JsonDataError(_)) => return Err((StatusCode::NOT_ACCEPTABLE, "The supplied webhook payload type is not accepted.".to_string())),
+        Err(_) => return Err((StatusCode::INTERNAL_SERVER_ERROR, "An unknown error has occurred in JSON parsing.".to_string()))
+    };
+
+    match payload {
+        Json(github::WebhookPayload::Published(payload)) => registry_published(payload)
+    };
+
+    Ok(StatusCode::OK)
+
+    // match payload.unwrap() {
+    //     "registry_package" => Ok(StatusCode::OK),
+    //     "ping" => Ok(StatusCode::OK),
+    //     _ => Err((StatusCode::NOT_ACCEPTABLE, format!("Payload type `{}` is not accepted.", payload_type)))
+    // }
+
+    // if event_type != "registry_package" {
+    //     return StatusCode::OK
+    // }
+    // println!("{:?}", event_type);
+    // // let publish_package_event: github::PackageUpdate = serde_json::from_value(package).unwrap();
+    // println!("{:?}", package.registry_package);
+    //
+    // Ok(StatusCode::OK)
 }
 
-#[OpenApi]
-impl Api {
-    #[oai(path = "/synkronized", method = "post")]
-    async fn synkronized(&self, package: Json<serde_json::Value>, headers: &HeaderMap) -> PackageUpdateResponse {
-        println!("{:?}", package);
-        println!("{:?}", serde_json::to_string(&package.0).unwrap());
-        if headers.get("X-GitHub-Event").unwrap() == "ping" {
-            return PackageUpdateResponse::Ok
-        }
-        PackageUpdateResponse::Ok
-    }
-    #[oai(path = "/ping", method = "post")]
-    async fn health_check(&self) -> HealthCheckResponse {
-        HealthCheckResponse::Ok
-    }
-}
 
 #[tokio::main]
-async fn main() -> Result<(), std::io::Error> {
+async fn main() {
     tracing_subscriber::fmt::init();
 
-    let api_service =
-        OpenApiService::new(Api, "Hello World", "1.0").server("http://localhost:8080");
-    let ui = api_service.swagger_ui();
-    let app = Route::new().nest("/", api_service).nest("/docs", ui);
+    let app = Router::new()
+        .route("/github-hooks", post(github_hooks));
 
-    Server::new(TcpListener::bind("0.0.0.0:8080"))
-        .run(app)
-        .await
+    // run our app with hyper, listening globally on port 3000
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
+    axum::serve(listener, app).await.unwrap();
 }
