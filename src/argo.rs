@@ -62,7 +62,7 @@ pub struct Spec {
 
 impl Application {
     pub fn create(project: SynkronizedProject, template: Template) -> Application {
-        Application::new(&project.name, Spec {
+        Application::new(&project.synkronized.name, Spec {
             project: ARGO_PROJECT.to_string(),
             source: Source {
                 repo_url: CHART_REPO.to_string(),
@@ -74,7 +74,7 @@ impl Application {
             },
             destination: Destination {
                 server: LOCAL_CLUSTER.to_string(),
-                namespace: project.name.clone(),
+                namespace: project.synkronized.name.clone(),
             },
             sync_policy: SyncPolicy {
                 sync_options: vec!["CreateNamespace=true".to_string()],
@@ -84,7 +84,7 @@ impl Application {
         })
     }
 
-    pub async fn apply(self, client: Client) -> anyhow::Result<()> {
+    pub async fn apply(self, client: &Client) -> anyhow::Result<()> {
         let ss_apply = PatchParams::apply("kubectl-light").force();
         let data: serde_json::Value = serde_json::to_value(&self)?;
         let api: Api<Application> = Api::namespaced(client.clone(), ARGO_NAMESPACE);

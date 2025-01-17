@@ -3,6 +3,7 @@ pub mod github;
 
 use std::collections::HashMap;
 use std::fs::rename;
+use std::sync::{Arc, Mutex};
 use k8s_openapi::api::core::v1::Pod;
 use dotenv::dotenv;
 use anyhow::{bail, Context, Result};
@@ -18,6 +19,11 @@ use axum::{
     http::header::HeaderMap
 };
 use axum::extract::rejection::JsonRejection;
+use axum::extract::State;
+use base64::prelude::*;
+use kube::{Client, Config};
+use kube::config::KubeConfigOptions;
+use octocrab::Octocrab;
 
 const CHART_REPO: &str = "https://charts.vaughn.sh";
 
@@ -28,9 +34,14 @@ pub struct Template {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct SynkronizedProject {
+pub struct Synkronized {
     name: String,
-    template: String,
+    template: String
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SynkronizedProject {
+    synkronized: Synkronized,
     config: serde_yaml::Value
 }
 
@@ -39,6 +50,12 @@ pub struct Charts {
     apiVersion: String,
     entries: HashMap<String, Vec<ChartVersion>>,
     generated: String
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ContainerImage {
+    name: String,
+    image: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -53,6 +70,11 @@ pub struct ChartVersion {
     chart_type: String,
     urls: Vec<String>,
     version: String
+}
+
+struct AppState {
+    github_client: Octocrab,
+    kube_client: Client
 }
 
 async fn get_chart_template(chart_name: &str) -> Result<Template> {
@@ -79,32 +101,52 @@ async fn read_synkronized_file(fp: &str) -> Result<SynkronizedProject> {
     Ok(synkronized_yaml)
 }
 
-// #[tokio::main]
-// async fn main() -> Result<()>{
-//     dotenv().ok();
-//
-//     let mut kube_config = Config::from_kubeconfig(&KubeConfigOptions::default()).await?;
-//     kube_config.accept_invalid_certs = true;
-//     let client = Client::try_from(kube_config).expect("Could not configure the client.");
-//
-//     let synkronized_yaml = read_synkronized_file("synkronized.yaml").await?;
-//     let chart_template = get_chart_template(&synkronized_yaml.template).await?;
-//
-//     // println!("{:?}", chart);
-//     // println!("{:?}", synkronized_yaml);
-//
-//     let application = argo::Application::create(synkronized_yaml, chart_template);
-//     application.apply(client).await
-// }
-
-fn registry_published (package_published: github::RegistryPublished) {
-    package_published.registry_package.package_version.package_url;
+fn merge_yaml(a: &mut serde_yaml::Value, b: serde_yaml::Value) {
+    match (a, b) {
+        (a @ &mut serde_yaml::Value::Mapping(_), serde_yaml::Value::Mapping(b)) => {
+            let a = a.as_mapping_mut().unwrap();
+            for (k, v) in b {
+                if !a.contains_key(&k) {a.insert(k.to_owned(), v.to_owned());}
+                else { merge_yaml(&mut a[&k], v); }
+            }
+        }
+        (a, b) => *a = b,
+    }
 }
 
-async fn github_hooks(headers: HeaderMap, payload: Result<Json<github::WebhookPayload>, JsonRejection>) -> Result<StatusCode, (StatusCode, String)> {
-    // println!("{:?}", serde_json::to_string(&package.0).unwrap());
-    // let event_type = headers.get("X-GitHub-Event").unwrap();
 
+async fn registry_published (package_published: github::RegistryPublished, github_client: &Octocrab, kube_client: &Client)  -> Result<StatusCode, (StatusCode, String)> {
+    let encoded_yaml = github_client.repos(package_published.repository.owner.login, package_published.repository.name)
+        .get_content()
+        .path("synkronized.yaml")
+        .send()
+        .await
+        .unwrap()
+        .items[0]
+        .clone()
+        .content
+        .unwrap()
+        .replace("\n", "");
+
+    let mut synkronized_yaml: SynkronizedProject = serde_yaml::from_str(&String::from_utf8(BASE64_STANDARD.decode(encoded_yaml).unwrap()).unwrap()).unwrap();
+    let container_image = serde_yaml::to_value(ContainerImage {
+        name: package_published.registry_package.name,
+        image: package_published.registry_package.package_version.package_url,
+    }).unwrap();
+
+    merge_yaml(&mut synkronized_yaml.config, container_image);
+
+    let chart_template = get_chart_template(&synkronized_yaml.synkronized.template).await.unwrap();
+
+    let application = argo::Application::create(synkronized_yaml, chart_template);
+    application.apply(kube_client).await.unwrap();
+
+    Ok(StatusCode::OK)
+}
+
+async fn github_hooks(headers: HeaderMap, State(state): State<Arc<AppState>>, payload: Result<Json<github::WebhookPayload>, JsonRejection>) -> Result<StatusCode, (StatusCode, String)> {
+
+    // Handle ping type events before routing specific payload types
     if headers.get("X-GitHub-Event").unwrap().to_str().unwrap() == "ping" {
         return Ok(StatusCode::OK)
     };
@@ -115,37 +157,38 @@ async fn github_hooks(headers: HeaderMap, payload: Result<Json<github::WebhookPa
         Err(_) => return Err((StatusCode::INTERNAL_SERVER_ERROR, "An unknown error has occurred in JSON parsing.".to_string()))
     };
 
+    // Process different payload types based on enum parsed
     match payload {
-        Json(github::WebhookPayload::Published(payload)) => registry_published(payload)
-    };
-
-    Ok(StatusCode::OK)
-
-    // match payload.unwrap() {
-    //     "registry_package" => Ok(StatusCode::OK),
-    //     "ping" => Ok(StatusCode::OK),
-    //     _ => Err((StatusCode::NOT_ACCEPTABLE, format!("Payload type `{}` is not accepted.", payload_type)))
-    // }
-
-    // if event_type != "registry_package" {
-    //     return StatusCode::OK
-    // }
-    // println!("{:?}", event_type);
-    // // let publish_package_event: github::PackageUpdate = serde_json::from_value(package).unwrap();
-    // println!("{:?}", package.registry_package);
-    //
-    // Ok(StatusCode::OK)
+        Json(github::WebhookPayload::Published(payload)) => registry_published(payload, &state.github_client, &state.kube_client).await
+    }
 }
 
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()>{
+    dotenv().ok();
+
     tracing_subscriber::fmt::init();
 
+    // Initialize Octocrab client
+    let token = std::env::var("GITHUB_API_TOKEN").expect("GITHUB_API_TOKEN env variable is required");
+    let github_client = Octocrab::builder().personal_token(token).build()?;
+
+    // Initialize kube client
+    let mut kube_config = Config::from_kubeconfig(&KubeConfigOptions::default()).await?;
+    kube_config.accept_invalid_certs = true;
+    let kube_client = Client::try_from(kube_config).expect("Could not configure the client.");
+
+    let app_state = Arc::new(AppState { github_client, kube_client });
+
     let app = Router::new()
-        .route("/github-hooks", post(github_hooks));
+        .route("/github-hooks", post(github_hooks))
+        .with_state(app_state);
 
     // run our app with hyper, listening globally on port 3000
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await?;
+    tracing::debug!("listening on {}", listener.local_addr()?);
+    axum::serve(listener, app).await?;
+
+    Ok(())
 }

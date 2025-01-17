@@ -1,5 +1,4 @@
 use serde::{Serialize, Deserialize};
-use serde_json::Value;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "action", rename_all = "snake_case")]
@@ -7,533 +6,302 @@ pub enum WebhookPayload {
     Published(RegistryPublished)
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RegistryPublished {
-    #[serde(rename = "registry_package")]
-    pub registry_package: RegistryPackage,
-    pub repository: Repository3,
-    pub sender: Sender,
-    pub installation: Installation,
+    pub(crate) registry_package: RegistryPackage,
+    pub(crate) repository: RegistryPublishedRepository,
+    pub(crate) sender: Sender,
+    pub(crate) installation: Installation,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Installation {
+    pub(crate) id: i64,
+    pub(crate) node_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RegistryPackage {
-    pub id: i64,
-    pub name: String,
-    pub namespace: String,
-    pub description: String,
-    pub ecosystem: String,
-    #[serde(rename = "package_type")]
-    pub package_type: String,
-    #[serde(rename = "html_url")]
-    pub html_url: String,
-    #[serde(rename = "created_at")]
-    pub created_at: String,
-    #[serde(rename = "updated_at")]
-    pub updated_at: String,
-    pub owner: Owner,
-    #[serde(rename = "package_version")]
-    pub package_version: PackageVersion,
-    pub registry: Registry,
+    pub(crate) id: i64,
+    pub(crate) name: String,
+    pub(crate) namespace: String,
+    pub(crate) description: String,
+    pub(crate) ecosystem: String,
+    pub(crate) package_type: String,
+    pub(crate) html_url: String,
+    pub(crate) created_at: String,
+    pub(crate) updated_at: String,
+    pub(crate) owner: Sender,
+    pub(crate) package_version: PackageVersion,
+    pub(crate) registry: Registry,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Owner {
-    pub login: String,
-    pub id: i64,
-    #[serde(rename = "node_id")]
-    pub node_id: String,
-    #[serde(rename = "avatar_url")]
-    pub avatar_url: String,
-    #[serde(rename = "gravatar_id")]
-    pub gravatar_id: String,
-    pub url: String,
-    #[serde(rename = "html_url")]
-    pub html_url: String,
-    #[serde(rename = "followers_url")]
-    pub followers_url: String,
-    #[serde(rename = "following_url")]
-    pub following_url: String,
-    #[serde(rename = "gists_url")]
-    pub gists_url: String,
-    #[serde(rename = "starred_url")]
-    pub starred_url: String,
-    #[serde(rename = "subscriptions_url")]
-    pub subscriptions_url: String,
-    #[serde(rename = "organizations_url")]
-    pub organizations_url: String,
-    #[serde(rename = "repos_url")]
-    pub repos_url: String,
-    #[serde(rename = "events_url")]
-    pub events_url: String,
-    #[serde(rename = "received_events_url")]
-    pub received_events_url: String,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Sender {
+    pub(crate) login: String,
+    pub(crate) id: i64,
+    pub(crate) node_id: String,
+    pub(crate) avatar_url: String,
+    pub(crate) gravatar_id: String,
+    pub(crate) url: String,
+    pub(crate) html_url: String,
+    pub(crate) followers_url: String,
+    pub(crate) following_url: String,
+    pub(crate) gists_url: String,
+    pub(crate) starred_url: String,
+    pub(crate) subscriptions_url: String,
+    pub(crate) organizations_url: String,
+    pub(crate) repos_url: String,
+    pub(crate) events_url: String,
+    pub(crate) received_events_url: String,
     #[serde(rename = "type")]
-    pub type_field: String,
-    #[serde(rename = "user_view_type")]
-    pub user_view_type: String,
-    #[serde(rename = "site_admin")]
-    pub site_admin: bool,
+    pub(crate) sender_type: String,
+    pub(crate) user_view_type: String,
+    pub(crate) site_admin: bool,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PackageVersion {
-    pub id: i64,
-    pub version: String,
-    pub name: String,
-    pub description: String,
-    pub summary: String,
-    pub body: Body,
-    pub manifest: String,
-    #[serde(rename = "html_url")]
-    pub html_url: String,
-    #[serde(rename = "target_commitish")]
-    pub target_commitish: String,
-    #[serde(rename = "target_oid")]
-    pub target_oid: String,
-    #[serde(rename = "created_at")]
-    pub created_at: String,
-    #[serde(rename = "updated_at")]
-    pub updated_at: String,
-    pub metadata: Vec<Value>,
-    #[serde(rename = "container_metadata")]
-    pub container_metadata: ContainerMetadata,
-    #[serde(rename = "package_files")]
-    pub package_files: Vec<Value>,
-    #[serde(rename = "installation_command")]
-    pub installation_command: String,
-    #[serde(rename = "package_url")]
-    pub package_url: String,
+    pub(crate) id: i64,
+    pub(crate) version: String,
+    pub(crate) name: String,
+    pub(crate) description: String,
+    pub(crate) summary: String,
+    pub(crate) body: Body,
+    pub(crate) manifest: String,
+    pub(crate) html_url: String,
+    pub(crate) target_commitish: String,
+    pub(crate) target_oid: String,
+    pub(crate) created_at: String,
+    pub(crate) updated_at: String,
+    pub(crate) metadata: Vec<Option<serde_json::Value>>,
+    pub(crate) container_metadata: ContainerMetadata,
+    pub(crate) package_files: Vec<Option<serde_json::Value>>,
+    pub(crate) installation_command: String,
+    pub(crate) package_url: String,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Body {
-    pub repository: Repository,
-    pub info: Info,
-    pub attributes: Attributes,
+    pub(crate) repository: BodyRepository,
+    pub(crate) info: Info,
+    pub(crate) attributes: Attributes,
     #[serde(rename = "_formatted")]
-    pub formatted: bool,
+    pub(crate) formatted: bool,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Repository {
-    pub repository: Repository2,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Repository2 {
-    pub id: i64,
-    pub name: String,
-    #[serde(rename = "owner_id")]
-    pub owner_id: i64,
-    #[serde(rename = "parent_id")]
-    pub parent_id: Value,
-    pub sandbox: Value,
-    #[serde(rename = "updated_at")]
-    pub updated_at: String,
-    #[serde(rename = "created_at")]
-    pub created_at: String,
-    pub public: bool,
-    pub description: String,
-    pub homepage: Value,
-    #[serde(rename = "source_id")]
-    pub source_id: i64,
-    #[serde(rename = "public_push")]
-    pub public_push: Value,
-    #[serde(rename = "disk_usage")]
-    pub disk_usage: i64,
-    pub locked: bool,
-    #[serde(rename = "pushed_at")]
-    pub pushed_at: String,
-    #[serde(rename = "watcher_count")]
-    pub watcher_count: i64,
-    #[serde(rename = "public_fork_count")]
-    pub public_fork_count: i64,
-    #[serde(rename = "primary_language_name_id")]
-    pub primary_language_name_id: i64,
-    #[serde(rename = "has_issues")]
-    pub has_issues: bool,
-    #[serde(rename = "has_wiki")]
-    pub has_wiki: bool,
-    #[serde(rename = "has_downloads")]
-    pub has_downloads: bool,
-    #[serde(rename = "raw_data")]
-    pub raw_data: RawData,
-    #[serde(rename = "organization_id")]
-    pub organization_id: Value,
-    #[serde(rename = "disabled_at")]
-    pub disabled_at: Value,
-    #[serde(rename = "disabled_by")]
-    pub disabled_by: Value,
-    #[serde(rename = "disabling_reason")]
-    pub disabling_reason: Value,
-    #[serde(rename = "health_status")]
-    pub health_status: Value,
-    #[serde(rename = "pushed_at_usec")]
-    pub pushed_at_usec: i64,
-    pub active: bool,
-    #[serde(rename = "reflog_sync_enabled")]
-    pub reflog_sync_enabled: bool,
-    #[serde(rename = "made_public_at")]
-    pub made_public_at: String,
-    #[serde(rename = "user_hidden")]
-    pub user_hidden: i64,
-    pub maintained: bool,
-    pub template: bool,
-    #[serde(rename = "owner_login")]
-    pub owner_login: String,
-    #[serde(rename = "world_writable_wiki")]
-    pub world_writable_wiki: bool,
-    #[serde(rename = "refset_updated_at")]
-    pub refset_updated_at: String,
-    #[serde(rename = "disabling_detail")]
-    pub disabling_detail: Value,
-    #[serde(rename = "archived_at")]
-    pub archived_at: Value,
-    #[serde(rename = "deleted_at")]
-    pub deleted_at: Value,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RawData {
-    pub data: Data,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Data {
-    #[serde(rename = "created_by_user_id")]
-    pub created_by_user_id: i64,
-    #[serde(rename = "primary_language_name")]
-    pub primary_language_name: String,
-    #[serde(rename = "completed_onboarding_tasks")]
-    pub completed_onboarding_tasks: Vec<Value>,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Info {
-    #[serde(rename = "type")]
-    pub type_field: String,
-    pub oid: String,
-    pub mode: i64,
-    pub name: String,
-    pub path: String,
-    pub size: Value,
-    pub collection: bool,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Attributes {
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Info {
+    #[serde(rename = "type")]
+    pub(crate) info_type: String,
+    pub(crate) oid: String,
+    pub(crate) mode: i64,
+    pub(crate) name: String,
+    pub(crate) path: String,
+    pub(crate) size: Option<serde_json::Value>,
+    pub(crate) collection: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BodyRepository {
+    pub(crate) repository: RepositoryRepository,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RepositoryRepository {
+    pub(crate) id: i64,
+    pub(crate) name: String,
+    pub(crate) owner_id: i64,
+    pub(crate) parent_id: Option<serde_json::Value>,
+    pub(crate) sandbox: Option<serde_json::Value>,
+    pub(crate) updated_at: String,
+    pub(crate) created_at: String,
+    pub(crate) public: bool,
+    pub(crate) description: String,
+    pub(crate) homepage: Option<serde_json::Value>,
+    pub(crate) source_id: i64,
+    pub(crate) public_push: Option<serde_json::Value>,
+    pub(crate) disk_usage: i64,
+    pub(crate) locked: bool,
+    pub(crate) pushed_at: String,
+    pub(crate) watcher_count: i64,
+    pub(crate) public_fork_count: i64,
+    pub(crate) primary_language_name_id: i64,
+    pub(crate) has_issues: bool,
+    pub(crate) has_wiki: bool,
+    pub(crate) has_downloads: bool,
+    pub(crate) raw_data: RawData,
+    pub(crate) organization_id: Option<serde_json::Value>,
+    pub(crate) disabled_at: Option<serde_json::Value>,
+    pub(crate) disabled_by: Option<serde_json::Value>,
+    pub(crate) disabling_reason: Option<serde_json::Value>,
+    pub(crate) health_status: Option<serde_json::Value>,
+    pub(crate) pushed_at_usec: i64,
+    pub(crate) active: bool,
+    pub(crate) reflog_sync_enabled: bool,
+    pub(crate) made_public_at: String,
+    pub(crate) user_hidden: i64,
+    pub(crate) maintained: bool,
+    pub(crate) template: bool,
+    pub(crate) owner_login: String,
+    pub(crate) world_writable_wiki: bool,
+    pub(crate) refset_updated_at: String,
+    pub(crate) disabling_detail: Option<serde_json::Value>,
+    pub(crate) archived_at: Option<serde_json::Value>,
+    pub(crate) deleted_at: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RawData {
+    pub(crate) data: Data,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Data {
+    pub(crate) created_by_user_id: i64,
+    pub(crate) primary_language_name: String,
+    pub(crate) completed_onboarding_tasks: Vec<Option<serde_json::Value>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ContainerMetadata {
-    pub tag: Tag,
-    pub labels: Labels,
-    pub manifest: Manifest,
+    pub(crate) tag: Tag,
+    pub(crate) labels: Labels,
+    pub(crate) manifest: Manifest,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Tag {
-    pub name: String,
-    pub digest: String,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Labels {
-    pub description: String,
-    pub source: String,
-    pub revision: String,
-    #[serde(rename = "image_url")]
-    pub image_url: String,
-    pub licenses: String,
-    #[serde(rename = "all_labels")]
-    pub all_labels: AllLabels,
+    pub(crate) description: String,
+    pub(crate) source: String,
+    pub(crate) revision: String,
+    pub(crate) image_url: String,
+    pub(crate) licenses: String,
+    pub(crate) all_labels: AllLabels,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AllLabels {
     #[serde(rename = "github.internal.platforms")]
-    pub github_internal_platforms: String,
+    pub(crate) github_internal_platforms: String,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Manifest {
-    pub digest: String,
-    #[serde(rename = "media_type")]
-    pub media_type: String,
-    pub uri: String,
-    pub size: i64,
-    pub config: Config,
-    pub layers: Vec<Value>,
+    pub(crate) digest: String,
+    pub(crate) media_type: String,
+    pub(crate) uri: String,
+    pub(crate) size: i64,
+    pub(crate) config: Config,
+    pub(crate) layers: Vec<Option<serde_json::Value>>,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
-    pub digest: String,
-    #[serde(rename = "media_type")]
-    pub media_type: String,
-    pub size: i64,
+    pub(crate) digest: String,
+    pub(crate) media_type: String,
+    pub(crate) size: i64,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Tag {
+    pub(crate) name: String,
+    pub(crate) digest: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Registry {
-    #[serde(rename = "about_url")]
-    pub about_url: String,
-    pub name: String,
+    pub(crate) about_url: String,
+    pub(crate) name: String,
     #[serde(rename = "type")]
-    pub type_field: String,
-    pub url: String,
-    pub vendor: String,
+    pub(crate) registry_type: String,
+    pub(crate) url: String,
+    pub(crate) vendor: String,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Repository3 {
-    pub id: i64,
-    #[serde(rename = "node_id")]
-    pub node_id: String,
-    pub name: String,
-    #[serde(rename = "full_name")]
-    pub full_name: String,
-    pub private: bool,
-    pub owner: Owner2,
-    #[serde(rename = "html_url")]
-    pub html_url: String,
-    pub description: String,
-    pub fork: bool,
-    pub url: String,
-    #[serde(rename = "forks_url")]
-    pub forks_url: String,
-    #[serde(rename = "keys_url")]
-    pub keys_url: String,
-    #[serde(rename = "collaborators_url")]
-    pub collaborators_url: String,
-    #[serde(rename = "teams_url")]
-    pub teams_url: String,
-    #[serde(rename = "hooks_url")]
-    pub hooks_url: String,
-    #[serde(rename = "issue_events_url")]
-    pub issue_events_url: String,
-    #[serde(rename = "events_url")]
-    pub events_url: String,
-    #[serde(rename = "assignees_url")]
-    pub assignees_url: String,
-    #[serde(rename = "branches_url")]
-    pub branches_url: String,
-    #[serde(rename = "tags_url")]
-    pub tags_url: String,
-    #[serde(rename = "blobs_url")]
-    pub blobs_url: String,
-    #[serde(rename = "git_tags_url")]
-    pub git_tags_url: String,
-    #[serde(rename = "git_refs_url")]
-    pub git_refs_url: String,
-    #[serde(rename = "trees_url")]
-    pub trees_url: String,
-    #[serde(rename = "statuses_url")]
-    pub statuses_url: String,
-    #[serde(rename = "languages_url")]
-    pub languages_url: String,
-    #[serde(rename = "stargazers_url")]
-    pub stargazers_url: String,
-    #[serde(rename = "contributors_url")]
-    pub contributors_url: String,
-    #[serde(rename = "subscribers_url")]
-    pub subscribers_url: String,
-    #[serde(rename = "subscription_url")]
-    pub subscription_url: String,
-    #[serde(rename = "commits_url")]
-    pub commits_url: String,
-    #[serde(rename = "git_commits_url")]
-    pub git_commits_url: String,
-    #[serde(rename = "comments_url")]
-    pub comments_url: String,
-    #[serde(rename = "issue_comment_url")]
-    pub issue_comment_url: String,
-    #[serde(rename = "contents_url")]
-    pub contents_url: String,
-    #[serde(rename = "compare_url")]
-    pub compare_url: String,
-    #[serde(rename = "merges_url")]
-    pub merges_url: String,
-    #[serde(rename = "archive_url")]
-    pub archive_url: String,
-    #[serde(rename = "downloads_url")]
-    pub downloads_url: String,
-    #[serde(rename = "issues_url")]
-    pub issues_url: String,
-    #[serde(rename = "pulls_url")]
-    pub pulls_url: String,
-    #[serde(rename = "milestones_url")]
-    pub milestones_url: String,
-    #[serde(rename = "notifications_url")]
-    pub notifications_url: String,
-    #[serde(rename = "labels_url")]
-    pub labels_url: String,
-    #[serde(rename = "releases_url")]
-    pub releases_url: String,
-    #[serde(rename = "deployments_url")]
-    pub deployments_url: String,
-    #[serde(rename = "created_at")]
-    pub created_at: String,
-    #[serde(rename = "updated_at")]
-    pub updated_at: String,
-    #[serde(rename = "pushed_at")]
-    pub pushed_at: String,
-    #[serde(rename = "git_url")]
-    pub git_url: String,
-    #[serde(rename = "ssh_url")]
-    pub ssh_url: String,
-    #[serde(rename = "clone_url")]
-    pub clone_url: String,
-    #[serde(rename = "svn_url")]
-    pub svn_url: String,
-    pub homepage: Value,
-    pub size: i64,
-    #[serde(rename = "stargazers_count")]
-    pub stargazers_count: i64,
-    #[serde(rename = "watchers_count")]
-    pub watchers_count: i64,
-    pub language: String,
-    #[serde(rename = "has_issues")]
-    pub has_issues: bool,
-    #[serde(rename = "has_projects")]
-    pub has_projects: bool,
-    #[serde(rename = "has_downloads")]
-    pub has_downloads: bool,
-    #[serde(rename = "has_wiki")]
-    pub has_wiki: bool,
-    #[serde(rename = "has_pages")]
-    pub has_pages: bool,
-    #[serde(rename = "has_discussions")]
-    pub has_discussions: bool,
-    #[serde(rename = "forks_count")]
-    pub forks_count: i64,
-    #[serde(rename = "mirror_url")]
-    pub mirror_url: Value,
-    pub archived: bool,
-    pub disabled: bool,
-    #[serde(rename = "open_issues_count")]
-    pub open_issues_count: i64,
-    pub license: Value,
-    #[serde(rename = "allow_forking")]
-    pub allow_forking: bool,
-    #[serde(rename = "is_template")]
-    pub is_template: bool,
-    #[serde(rename = "web_commit_signoff_required")]
-    pub web_commit_signoff_required: bool,
-    pub topics: Vec<Value>,
-    pub visibility: String,
-    pub forks: i64,
-    #[serde(rename = "open_issues")]
-    pub open_issues: i64,
-    pub watchers: i64,
-    #[serde(rename = "default_branch")]
-    pub default_branch: String,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Owner2 {
-    pub login: String,
-    pub id: i64,
-    #[serde(rename = "node_id")]
-    pub node_id: String,
-    #[serde(rename = "avatar_url")]
-    pub avatar_url: String,
-    #[serde(rename = "gravatar_id")]
-    pub gravatar_id: String,
-    pub url: String,
-    #[serde(rename = "html_url")]
-    pub html_url: String,
-    #[serde(rename = "followers_url")]
-    pub followers_url: String,
-    #[serde(rename = "following_url")]
-    pub following_url: String,
-    #[serde(rename = "gists_url")]
-    pub gists_url: String,
-    #[serde(rename = "starred_url")]
-    pub starred_url: String,
-    #[serde(rename = "subscriptions_url")]
-    pub subscriptions_url: String,
-    #[serde(rename = "organizations_url")]
-    pub organizations_url: String,
-    #[serde(rename = "repos_url")]
-    pub repos_url: String,
-    #[serde(rename = "events_url")]
-    pub events_url: String,
-    #[serde(rename = "received_events_url")]
-    pub received_events_url: String,
-    #[serde(rename = "type")]
-    pub type_field: String,
-    #[serde(rename = "user_view_type")]
-    pub user_view_type: String,
-    #[serde(rename = "site_admin")]
-    pub site_admin: bool,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Sender {
-    pub login: String,
-    pub id: i64,
-    #[serde(rename = "node_id")]
-    pub node_id: String,
-    #[serde(rename = "avatar_url")]
-    pub avatar_url: String,
-    #[serde(rename = "gravatar_id")]
-    pub gravatar_id: String,
-    pub url: String,
-    #[serde(rename = "html_url")]
-    pub html_url: String,
-    #[serde(rename = "followers_url")]
-    pub followers_url: String,
-    #[serde(rename = "following_url")]
-    pub following_url: String,
-    #[serde(rename = "gists_url")]
-    pub gists_url: String,
-    #[serde(rename = "starred_url")]
-    pub starred_url: String,
-    #[serde(rename = "subscriptions_url")]
-    pub subscriptions_url: String,
-    #[serde(rename = "organizations_url")]
-    pub organizations_url: String,
-    #[serde(rename = "repos_url")]
-    pub repos_url: String,
-    #[serde(rename = "events_url")]
-    pub events_url: String,
-    #[serde(rename = "received_events_url")]
-    pub received_events_url: String,
-    #[serde(rename = "type")]
-    pub type_field: String,
-    #[serde(rename = "user_view_type")]
-    pub user_view_type: String,
-    #[serde(rename = "site_admin")]
-    pub site_admin: bool,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Installation {
-    pub id: i64,
-    #[serde(rename = "node_id")]
-    pub node_id: String,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RegistryPublishedRepository {
+    pub(crate) id: i64,
+    pub(crate) node_id: String,
+    pub(crate) name: String,
+    pub(crate) full_name: String,
+    pub(crate) private: bool,
+    pub(crate) owner: Sender,
+    pub(crate) html_url: String,
+    pub(crate) description: String,
+    pub(crate) fork: bool,
+    pub(crate) url: String,
+    pub(crate) forks_url: String,
+    pub(crate) keys_url: String,
+    pub(crate) collaborators_url: String,
+    pub(crate) teams_url: String,
+    pub(crate) hooks_url: String,
+    pub(crate) issue_events_url: String,
+    pub(crate) events_url: String,
+    pub(crate) assignees_url: String,
+    pub(crate) branches_url: String,
+    pub(crate) tags_url: String,
+    pub(crate) blobs_url: String,
+    pub(crate) git_tags_url: String,
+    pub(crate) git_refs_url: String,
+    pub(crate) trees_url: String,
+    pub(crate) statuses_url: String,
+    pub(crate) languages_url: String,
+    pub(crate) stargazers_url: String,
+    pub(crate) contributors_url: String,
+    pub(crate) subscribers_url: String,
+    pub(crate) subscription_url: String,
+    pub(crate) commits_url: String,
+    pub(crate) git_commits_url: String,
+    pub(crate) comments_url: String,
+    pub(crate) issue_comment_url: String,
+    pub(crate) contents_url: String,
+    pub(crate) compare_url: String,
+    pub(crate) merges_url: String,
+    pub(crate) archive_url: String,
+    pub(crate) downloads_url: String,
+    pub(crate) issues_url: String,
+    pub(crate) pulls_url: String,
+    pub(crate) milestones_url: String,
+    pub(crate) notifications_url: String,
+    pub(crate) labels_url: String,
+    pub(crate) releases_url: String,
+    pub(crate) deployments_url: String,
+    pub(crate) created_at: String,
+    pub(crate) updated_at: String,
+    pub(crate) pushed_at: String,
+    pub(crate) git_url: String,
+    pub(crate) ssh_url: String,
+    pub(crate) clone_url: String,
+    pub(crate) svn_url: String,
+    pub(crate) homepage: Option<serde_json::Value>,
+    pub(crate) size: i64,
+    pub(crate) stargazers_count: i64,
+    pub(crate) watchers_count: i64,
+    pub(crate) language: String,
+    pub(crate) has_issues: bool,
+    pub(crate) has_projects: bool,
+    pub(crate) has_downloads: bool,
+    pub(crate) has_wiki: bool,
+    pub(crate) has_pages: bool,
+    pub(crate) has_discussions: bool,
+    pub(crate) forks_count: i64,
+    pub(crate) mirror_url: Option<serde_json::Value>,
+    pub(crate) archived: bool,
+    pub(crate) disabled: bool,
+    pub(crate) open_issues_count: i64,
+    pub(crate) license: Option<serde_json::Value>,
+    pub(crate) allow_forking: bool,
+    pub(crate) is_template: bool,
+    pub(crate) web_commit_signoff_required: bool,
+    pub(crate) topics: Vec<Option<serde_json::Value>>,
+    pub(crate) visibility: String,
+    pub(crate) forks: i64,
+    pub(crate) open_issues: i64,
+    pub(crate) watchers: i64,
+    pub(crate) default_branch: String,
 }
