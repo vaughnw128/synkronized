@@ -25,6 +25,14 @@ The use of simple helm templates allows for quickly adding new features outside 
 
 ---
 
+## Current Features
+
+- Templating support from synkronized-charts, and pulling the latest chart versions
+- Receiving package update webhooks for container deployments to ArgoCD as an application
+- Parsing of environment variables and secrets pulled from a local Hashicorp Vault deployment
+
+---
+
 ## Planned Features
 
 - Auto provisioned loadbalancers for services that request them
