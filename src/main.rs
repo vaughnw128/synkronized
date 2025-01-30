@@ -22,7 +22,7 @@ use axum::extract::rejection::JsonRejection;
 use axum::extract::State;
 use base64::prelude::*;
 use kube::{Client, Config};
-use kube::config::KubeConfigOptions;
+use kube::config::{KubeConfigOptions, Kubeconfig};
 use octocrab::Octocrab;
 
 const CHART_REPO: &str = "https://charts.vaughn.sh";
@@ -175,7 +175,9 @@ async fn main() -> Result<()>{
     let github_client = Octocrab::builder().personal_token(token).build()?;
 
     // Initialize kube client
-    let mut kube_config = Config::from_kubeconfig(&KubeConfigOptions::default()).await?;
+    let kubeconfig_secret = std::env::var("KUBE_CONFIG").expect("KUBE_CONFIG env variable is required");
+    let custom_kubeconfig = Kubeconfig::from_yaml(&kubeconfig_secret)?;
+    let mut kube_config = Config::from_custom_kubeconfig(custom_kubeconfig, &KubeConfigOptions::default()).await?;
     kube_config.accept_invalid_certs = true;
     let kube_client = Client::try_from(kube_config).expect("Could not configure the client.");
 

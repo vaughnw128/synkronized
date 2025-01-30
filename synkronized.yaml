@@ -1,0 +1,12 @@
+name: "synkronized"
+size: small
+
+gateway:
+  public: true
+  hostname: "synkronized.vaughn.sh"
+  containerPort: 8080
+vaultSecrets:
+  - name: "GITHUB_API_TOKEN"
+    path: "synkronized/github-api-token"
+  - name: "KUBE_CONFIG"
+    path: "synkronized/kubeconfig"
