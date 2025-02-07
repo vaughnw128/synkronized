@@ -1,9 +1,53 @@
+use axum::body::Bytes;
+use axum::extract::{FromRequest, Request};
+use axum::Json;
+use hmac_sha256::HMAC;
+use http::StatusCode;
 use serde::{Serialize, Deserialize};
+use serde_json::Value;
+use subtle::ConstantTimeEq;
+use crate::json_error;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "action", rename_all = "snake_case")]
 pub enum WebhookPayload {
     Published(RegistryPublished)
+}
+
+impl<S> FromRequest<S> for WebhookPayload
+where
+    S: Send + Sync,
+{
+    type Rejection = (StatusCode, Json<Value>);
+
+    async fn from_request(req: Request, state: &S) -> anyhow::Result<Self, Self::Rejection> {
+
+        // TODO: Do this more properly with some type of environment variable handler eg https://nrempel.com/handling-environment-variables-with-axum/
+        let webhook_token = std::env::var("GITHUB_WEBHOOK_TOKEN").expect("GITHUB_WEBHOOK_TOKEN environment variable is required");
+
+        let signature_sha256 = req
+            .headers()
+            .get("X-Hub-Signature-256")
+            .and_then(|v| v.to_str().ok())
+            .ok_or(json_error("Signature is missing."))?
+            .strip_prefix("sha256=")
+            .ok_or(json_error("Signature prefix is missing."))?;
+        let signature = hex::decode(signature_sha256).map_err(|_| json_error("Malformed signature."))?;
+        let body = Bytes::from_request(req, state)
+            .await
+            .map_err(|_| json_error("Error reading request body."))?;
+        let mac = HMAC::mac(&body, webhook_token.as_bytes());
+        if mac.ct_ne(&signature).into() {
+            return Err(json_error("Bad signature."));
+        }
+
+        // TODO: Do this more properly with Json<T>
+        let payload = serde_json::from_slice::<WebhookPayload>(&body)
+            .map_err(|e| json_error(format!("Unable to parse webhook request body: {}", e)))?;
+
+        Ok(payload)
+
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -74,9 +118,9 @@ pub struct PackageVersion {
     pub(crate) target_oid: String,
     pub(crate) created_at: String,
     pub(crate) updated_at: String,
-    pub(crate) metadata: Vec<Option<serde_json::Value>>,
+    pub(crate) metadata: Vec<Option<Value>>,
     pub(crate) container_metadata: ContainerMetadata,
-    pub(crate) package_files: Vec<Option<serde_json::Value>>,
+    pub(crate) package_files: Vec<Option<Value>>,
     pub(crate) installation_command: String,
     pub(crate) package_url: String,
 }
@@ -102,7 +146,7 @@ pub struct Info {
     pub(crate) mode: i64,
     pub(crate) name: String,
     pub(crate) path: String,
-    pub(crate) size: Option<serde_json::Value>,
+    pub(crate) size: Option<Value>,
     pub(crate) collection: bool,
 }
 
@@ -116,15 +160,15 @@ pub struct RepositoryRepository {
     pub(crate) id: i64,
     pub(crate) name: String,
     pub(crate) owner_id: i64,
-    pub(crate) parent_id: Option<serde_json::Value>,
-    pub(crate) sandbox: Option<serde_json::Value>,
+    pub(crate) parent_id: Option<Value>,
+    pub(crate) sandbox: Option<Value>,
     pub(crate) updated_at: String,
     pub(crate) created_at: String,
     pub(crate) public: bool,
     pub(crate) description: String,
-    pub(crate) homepage: Option<serde_json::Value>,
+    pub(crate) homepage: Option<Value>,
     pub(crate) source_id: i64,
-    pub(crate) public_push: Option<serde_json::Value>,
+    pub(crate) public_push: Option<Value>,
     pub(crate) disk_usage: i64,
     pub(crate) locked: bool,
     pub(crate) pushed_at: String,
@@ -135,11 +179,11 @@ pub struct RepositoryRepository {
     pub(crate) has_wiki: bool,
     pub(crate) has_downloads: bool,
     pub(crate) raw_data: RawData,
-    pub(crate) organization_id: Option<serde_json::Value>,
-    pub(crate) disabled_at: Option<serde_json::Value>,
-    pub(crate) disabled_by: Option<serde_json::Value>,
-    pub(crate) disabling_reason: Option<serde_json::Value>,
-    pub(crate) health_status: Option<serde_json::Value>,
+    pub(crate) organization_id: Option<Value>,
+    pub(crate) disabled_at: Option<Value>,
+    pub(crate) disabled_by: Option<Value>,
+    pub(crate) disabling_reason: Option<Value>,
+    pub(crate) health_status: Option<Value>,
     pub(crate) pushed_at_usec: i64,
     pub(crate) active: bool,
     pub(crate) reflog_sync_enabled: bool,
@@ -150,9 +194,9 @@ pub struct RepositoryRepository {
     pub(crate) owner_login: String,
     pub(crate) world_writable_wiki: bool,
     pub(crate) refset_updated_at: String,
-    pub(crate) disabling_detail: Option<serde_json::Value>,
-    pub(crate) archived_at: Option<serde_json::Value>,
-    pub(crate) deleted_at: Option<serde_json::Value>,
+    pub(crate) disabling_detail: Option<Value>,
+    pub(crate) archived_at: Option<Value>,
+    pub(crate) deleted_at: Option<Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -164,7 +208,7 @@ pub struct RawData {
 pub struct Data {
     pub(crate) created_by_user_id: i64,
     pub(crate) primary_language_name: String,
-    pub(crate) completed_onboarding_tasks: Vec<Option<serde_json::Value>>,
+    pub(crate) completed_onboarding_tasks: Vec<Option<Value>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -187,7 +231,7 @@ pub struct Labels {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AllLabels {
     #[serde(rename = "github.internal.platforms")]
-    pub(crate) github_internal_platforms: String,
+    pub(crate) github_internal_platforms: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -197,7 +241,7 @@ pub struct Manifest {
     pub(crate) uri: String,
     pub(crate) size: i64,
     pub(crate) config: Config,
-    pub(crate) layers: Vec<Option<serde_json::Value>>,
+    pub(crate) layers: Vec<Option<Value>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -278,7 +322,7 @@ pub struct RegistryPublishedRepository {
     pub(crate) ssh_url: String,
     pub(crate) clone_url: String,
     pub(crate) svn_url: String,
-    pub(crate) homepage: Option<serde_json::Value>,
+    pub(crate) homepage: Option<Value>,
     pub(crate) size: i64,
     pub(crate) stargazers_count: i64,
     pub(crate) watchers_count: i64,
@@ -290,15 +334,15 @@ pub struct RegistryPublishedRepository {
     pub(crate) has_pages: bool,
     pub(crate) has_discussions: bool,
     pub(crate) forks_count: i64,
-    pub(crate) mirror_url: Option<serde_json::Value>,
+    pub(crate) mirror_url: Option<Value>,
     pub(crate) archived: bool,
     pub(crate) disabled: bool,
     pub(crate) open_issues_count: i64,
-    pub(crate) license: Option<serde_json::Value>,
+    pub(crate) license: Option<Value>,
     pub(crate) allow_forking: bool,
     pub(crate) is_template: bool,
     pub(crate) web_commit_signoff_required: bool,
-    pub(crate) topics: Vec<Option<serde_json::Value>>,
+    pub(crate) topics: Vec<Option<Value>>,
     pub(crate) visibility: String,
     pub(crate) forks: i64,
     pub(crate) open_issues: i64,

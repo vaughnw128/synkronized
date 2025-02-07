@@ -3,7 +3,7 @@ use kube::{Api, Client, CustomResource};
 use kube::api::{Patch, PatchParams};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use crate::{argo, SynkronizedProject, Template, CHART_REPO};
+use crate::{argo, SynkronizedProject, helm};
 
 const ARGO_NAMESPACE: &str = "argocd";
 const ARGO_PROJECT: &str = "default";
@@ -61,11 +61,11 @@ pub struct Spec {
 }
 
 impl Application {
-    pub fn create(project: SynkronizedProject, template: Template) -> Application {
+    pub fn create(project: SynkronizedProject, template: helm::Template) -> Application {
         Application::new(&project.synkronized.name, Spec {
             project: ARGO_PROJECT.to_string(),
             source: Source {
-                repo_url: CHART_REPO.to_string(),
+                repo_url: helm::CHART_REPO.to_string(),
                 chart: template.name,
                 target_revision: template.version,
                 helm: Helm {
