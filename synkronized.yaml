@@ -12,3 +12,5 @@ config:
     path: "synkronized/github-api-token"
   - name: "KUBE_CONFIG"
     path: "synkronized/kubeconfig"
+  - name: "GITHUB_WEBHOOK_TOKEN"
+    path: "synkronized/github-webhook-token"
