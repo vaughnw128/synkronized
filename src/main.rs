@@ -130,8 +130,6 @@ async fn main() -> Result<()>{
     let token = std::env::var("GITHUB_API_TOKEN").expect("GITHUB_API_TOKEN env variable is required");
     let github_client = Octocrab::builder().personal_token(token).build()?;
 
-    // Initialize webhook token
-
     // Initialize kube client
     let kubeconfig_secret = std::env::var("KUBE_CONFIG").expect("KUBE_CONFIG env variable is required");
     let custom_kubeconfig = Kubeconfig::from_yaml(&String::from_utf8(BASE64_STANDARD.decode(&kubeconfig_secret)?)?)?;

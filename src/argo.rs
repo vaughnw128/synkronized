@@ -7,7 +7,6 @@ use crate::{argo, SynkronizedProject, helm};
 
 const ARGO_NAMESPACE: &str = "argocd";
 const ARGO_PROJECT: &str = "default";
-const LOCAL_CLUSTER: &str = "https://kubernetes.default.svc";
 
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, Default)]
 #[serde(rename_all = "camelCase")]
@@ -27,7 +26,7 @@ pub struct Source {
 
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, Default)]
 pub struct Destination {
-    server: String,
+    name: String,
     namespace: String,
 }
 
@@ -73,7 +72,7 @@ impl Application {
                 }
             },
             destination: Destination {
-                server: LOCAL_CLUSTER.to_string(),
+                name: "in-cluster".to_string(),
                 namespace: project.synkronized.name.clone(),
             },
             sync_policy: SyncPolicy {
