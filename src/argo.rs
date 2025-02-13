@@ -3,10 +3,9 @@ use kube::{Api, Client, CustomResource};
 use kube::api::{Patch, PatchParams};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use crate::{argo, SynkronizedProject, helm};
+use crate::{SynkronizedProject, helm};
 
 const ARGO_NAMESPACE: &str = "argocd";
-const ARGO_PROJECT: &str = "default";
 
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, Default)]
 #[serde(rename_all = "camelCase")]
@@ -24,9 +23,11 @@ pub struct Source {
     helm: Helm
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, Default, Derivative)]
 pub struct Destination {
+    #[derivative(Default(value="in-cluster"))]
     name: String,
+    #[derivative(Default(value="argocd"))]
     namespace: String,
 }
 
@@ -37,9 +38,8 @@ pub struct SyncPolicy {
     sync_options: Vec<String>
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, Derivative)]
+#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, Default, Derivative)]
 #[serde(rename_all = "camelCase")]
-#[derivative(Default)]
 pub struct Automated {
     #[derivative(Default(value="false"))]
     prune: bool,
@@ -49,10 +49,11 @@ pub struct Automated {
     allow_empty: bool
 }
 
-#[derive(CustomResource, Deserialize, Serialize, Clone, Debug, JsonSchema, Default)]
+#[derive(CustomResource, Deserialize, Serialize, Clone, Debug, JsonSchema, Default, Derivative)]
 #[kube(group = "argoproj.io", version = "v1alpha1", kind = "Application", namespaced)]
 #[serde(rename_all = "camelCase")]
 pub struct Spec {
+    #[derivative(Default(value="default"))]
     project: String,
     source: Source,
     destination: Destination,
@@ -62,7 +63,6 @@ pub struct Spec {
 impl Application {
     pub fn create(project: SynkronizedProject, template: helm::Template) -> Application {
         Application::new(&project.synkronized.name, Spec {
-            project: ARGO_PROJECT.to_string(),
             source: Source {
                 repo_url: helm::CHART_REPO.to_string(),
                 chart: template.name,
@@ -70,10 +70,6 @@ impl Application {
                 helm: Helm {
                     values: serde_yaml::to_string(&project.config).unwrap()
                 }
-            },
-            destination: Destination {
-                name: "in-cluster".to_string(),
-                namespace: project.synkronized.name.clone(),
             },
             sync_policy: SyncPolicy {
                 sync_options: vec!["CreateNamespace=true".to_string()],

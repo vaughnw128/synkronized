@@ -23,7 +23,7 @@ pub struct ChartVersion {
     #[serde(rename="apiVersion")]
     api_version: String,
     #[serde(rename="appVersion")]
-    appVersion: String,
+    app_version: String,
     created: String,
     description: String,
     digest: String,

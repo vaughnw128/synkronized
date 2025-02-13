@@ -6,30 +6,17 @@ mod helm;
 
 // Define imports
 use std::fmt::Display;
-use std::fs::rename;
-use std::sync::{Arc, Mutex};
-use k8s_openapi::api::core::v1::Pod;
+use std::sync::Arc;
 use dotenv::dotenv;
-use anyhow::{bail, Context, Result};
-use async_trait::async_trait;
-use schemars::JsonSchema;
+use anyhow::{Result, Error, anyhow};
 use serde::{Deserialize, Serialize};
-use derivative::Derivative;
-use futures::{StreamExt, TryStreamExt};
-use subtle::ConstantTimeEq;
-use chrono::DateTime;
-use axum::{routing::{get, post}, http::StatusCode, Json, Router, http::header::HeaderMap, RequestExt, Extension};
-use axum::body::Bytes;
-use axum::extract::rejection::JsonRejection;
-use axum::extract::{FromRef, FromRequest, Request, State};
+use axum::{routing::{post}, http::StatusCode, Json, Router, http::header::HeaderMap};
+use axum::extract::State;
 use base64::prelude::*;
-use hmac_sha256::HMAC;
 use kube::{Client, Config};
 use kube::config::{KubeConfigOptions, Kubeconfig};
 use octocrab::Octocrab;
-use serde::de::DeserializeOwned;
 use serde_json::{json, Value};
-use std::collections::HashMap;
 
 
 
@@ -74,6 +61,10 @@ async fn registry_published (package_published: github::RegistryPublished, githu
 
     // Decode the synkronized yaml from base64 as this is what Github returns
     let mut synkronized_yaml: SynkronizedProject = serde_yaml::from_str(&String::from_utf8(BASE64_STANDARD.decode(encoded_yaml)?)?)?;
+
+    if package_published.registry_package.package_version.package_url.split(":").collect::<Vec<&str>>()[0] == "" {
+        return Err(anyhow!("Unknown server error."));
+    }
 
     let container_image = serde_yaml::to_value(ContainerImage {
         name: package_published.registry_package.name,
