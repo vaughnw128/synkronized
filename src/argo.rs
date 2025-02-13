@@ -25,8 +25,10 @@ pub struct Source {
 
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, Default, Derivative)]
 pub struct Destination {
-    #[derivative(Default(value="in-cluster"))]
-    name: String,
+    // #[derivative(Default(value="in-cluster"))]
+    // name: String,
+    #[derivative(Default(value="https://kubernetes.default.svc"))]
+    server: String,
     #[derivative(Default(value="argocd"))]
     namespace: String,
 }
