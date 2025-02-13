@@ -55,7 +55,7 @@ pub struct RegistryPublished {
     pub(crate) registry_package: RegistryPackage,
     pub(crate) repository: RegistryPublishedRepository,
     pub(crate) sender: Sender,
-    pub(crate) installation: Installation,
+    pub(crate) installation: Option<Installation>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
