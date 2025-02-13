@@ -62,7 +62,7 @@ async fn registry_published (package_published: github::RegistryPublished, githu
     // Decode the synkronized yaml from base64 as this is what Github returns
     let mut synkronized_yaml: SynkronizedProject = serde_yaml::from_str(&String::from_utf8(BASE64_STANDARD.decode(encoded_yaml)?)?)?;
 
-    if package_published.registry_package.package_version.package_url.split(":").collect::<Vec<&str>>()[0] == "" {
+    if package_published.registry_package.package_version.package_url.split(":").collect::<Vec<&str>>()[1] == "" {
         return Err(anyhow!("Unknown server error."));
     }
 
@@ -104,7 +104,7 @@ async fn github_hooks(headers: HeaderMap, State(state): State<Arc<AppState>>, pa
 
     // Process different payload types based on enum parsed
     match payload {
-        github::WebhookPayload::Published(payload) => registry_published(payload, &state.github_client, &state.kube_client).await.unwrap()
+        github::WebhookPayload::Published(payload) => registry_published(payload, &state.github_client, &state.kube_client).await.map_err(|_| json_error("Something went wrong!"))?
     };
 
     Ok(StatusCode::OK)

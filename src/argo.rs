@@ -25,11 +25,10 @@ pub struct Source {
 
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, Default, Derivative)]
 pub struct Destination {
-    // #[derivative(Default(value="in-cluster"))]
-    // name: String,
-    #[derivative(Default(value="https://kubernetes.default.svc"))]
-    server: String,
-    #[derivative(Default(value="argocd"))]
+    #[derivative(Default(value="in-cluster"))]
+    name: String,
+    // #[derivative(Default(value="https://kubernetes.default.svc"))]
+    // server: String,
     namespace: String,
 }
 
@@ -76,6 +75,10 @@ impl Application {
             sync_policy: SyncPolicy {
                 sync_options: vec!["CreateNamespace=true".to_string()],
                 ..Default::default()
+            },
+            destination: Destination {
+                namespace: project.synkronized.name.clone(),
+                name: "in-cluster".to_string()
             },
             ..Default::default()
         })
