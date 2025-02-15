@@ -8,7 +8,7 @@ mod helm;
 use std::fmt::Display;
 use std::sync::Arc;
 use dotenv::dotenv;
-use anyhow::{Result, Error, anyhow};
+use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 use axum::{routing::{post}, http::StatusCode, Json, Router, http::header::HeaderMap};
 use axum::extract::State;
@@ -48,16 +48,19 @@ struct AppState {
 
 async fn registry_published (package_published: github::RegistryPublished, github_client: &Octocrab, kube_client: &Client)  -> Result<StatusCode> {
     // Pull the Synkronized.yaml file from the repository base
-    let encoded_yaml = github_client.repos(package_published.repository.owner.login, package_published.repository.name)
-        .get_content()
-        .path("synkronized.yaml")
-        .send()
-        .await?
-        .items[0]
-        .clone()
-        .content
-        .unwrap()
-        .replace("\n", "");
+    let encoded_yaml = match package_published.repository {
+        Some(repo) => github_client.repos(repo.owner.login, repo.name)
+            .get_content()
+            .path("synkronized.yaml")
+            .send()
+            .await?
+            .items[0]
+            .clone()
+            .content
+            .unwrap()
+            .replace("\n", ""),
+        None => return Err(anyhow!("No repository was specified by the webhook."))
+    };
 
     // Decode the synkronized yaml from base64 as this is what Github returns
     let mut synkronized_yaml: SynkronizedProject = serde_yaml::from_str(&String::from_utf8(BASE64_STANDARD.decode(encoded_yaml)?)?)?;

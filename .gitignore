@@ -9,3 +9,9 @@ debug/
 # Project
 .kubeconfig
 .env
+
+# Github files
+out.json
+parse_refs.py
+api.github.com.deref.json
+api.github.com.json
