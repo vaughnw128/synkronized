@@ -457,7 +457,7 @@ pub struct Repository {
     /// Whether to delete head branches when pull requests are merged
     pub(crate) delete_branch_on_merge: Option<bool>,
     pub(crate) deployments_url: String,
-    pub(crate) description: String,
+    pub(crate) description: Option<String>,
     /// Returns whether or not this repository disabled.
     pub(crate) disabled: bool,
     pub(crate) downloads_url: String,
@@ -482,7 +482,7 @@ pub struct Repository {
     pub(crate) has_projects: bool,
     /// Whether the wiki is enabled.
     pub(crate) has_wiki: bool,
-    pub(crate) homepage: String,
+    pub(crate) homepage: Option<String>,
     pub(crate) hooks_url: String,
     pub(crate) html_url: String,
     /// Unique identifier of the repository
@@ -497,7 +497,7 @@ pub struct Repository {
     pub(crate) language: String,
     pub(crate) languages_url: String,
     /// License Simple
-    pub(crate) license: LicenseSimple,
+    pub(crate) license: Option<LicenseSimple>,
     pub(crate) master_branch: Option<String>,
     /// The default value for a merge commit message.
     ///
@@ -513,7 +513,7 @@ pub struct Repository {
     pub(crate) merge_commit_title: Option<MergeCommitTitle>,
     pub(crate) merges_url: String,
     pub(crate) milestones_url: String,
-    pub(crate) mirror_url: String,
+    pub(crate) mirror_url: Option<String>,
     /// The name of the repository.
     pub(crate) name: String,
     pub(crate) network_count: Option<i64>,
