@@ -556,7 +556,7 @@ pub struct Repository {
     pub(crate) subscription_url: String,
     pub(crate) svn_url: String,
     pub(crate) tags_url: String,
-    pub(crate) teams_url: String,
+    pub(crate) teams_url: Option<String>,
     pub(crate) temp_clone_token: Option<String>,
     pub(crate) template_repository: Option<TemplateRepository>,
     pub(crate) topics: Option<Vec<String>>,
